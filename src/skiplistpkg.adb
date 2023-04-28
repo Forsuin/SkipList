@@ -184,19 +184,20 @@ package body SkipListPkg is
          end if;
       end if;
 
-      while not removedLayer loop
-         if not (currentNode.Below = null) then
-            if currentNode.Below.Right = null then
-               if currentNode.Below.Below /= null then
-                  temp              := currentNode.Below;
-                  currentNode.Below := currentNode.Below.Below;
-                  removedLayer      := True;
-                  Free_Node (temp);
-                  List.Height := List.Height - 1;
-                  --  else
-                  --     currentNode.Below := null;
-               end if;
+      while currentNode /= null and then not removedLayer loop
+         if currentNode.Below /= null and then currentNode.Below.Right = null
+         then
+            temp := currentNode.Below;
+
+            if currentNode.Below.Below /= null then
+               currentNode.Below := currentNode.Below.Below;
+            else
+               currentNode.Below := null;
             end if;
+
+            removedLayer := True;
+            Free_Node (temp);
+            List.Height := List.Height - 1;
          end if;
 
          currentNode := currentNode.Below;
@@ -217,8 +218,6 @@ package body SkipListPkg is
       currentNode : Node_Ptr;
       temp        : Node_Ptr;
    begin
-      Put_Line ("remove()");
-
       if (List.Size = 0) then
          return False;
       end if;
@@ -229,12 +228,13 @@ package body SkipListPkg is
 
       currentNode := List.Top_Left;
       while currentNode /= null loop
-         while currentNode.Right /= null and currentNode.Right.all.Data < Item
+         while currentNode.Right /= null and then currentNode.Right.Data < Item
          loop
             currentNode := currentNode.Right;
          end loop;
 
-         if currentNode.Right /= null and currentNode.Right.Data = Item then
+         if currentNode.Right /= null and then currentNode.Right.Data = Item
+         then
 
             temp := currentNode.Right;
 
@@ -257,7 +257,6 @@ package body SkipListPkg is
       end loop;
 
       --should never get here
-      Put_Line ("Unable to find element to remove");
       return False;
    end Remove;
 
@@ -290,8 +289,7 @@ package body SkipListPkg is
             elsif (currentNode.Below /= null) then
                currentNode := currentNode.Below;
             else
-               --should be impossible to get to, but just to be safe
-               Put_Line ("Doesn't contain element");
+               --should be impossible to get to, but just to be safe`
                return False;
             end if;
          end if;
