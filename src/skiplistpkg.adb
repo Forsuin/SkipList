@@ -175,18 +175,18 @@ package body SkipListPkg is
       removedLayer : Boolean  := False;
       temp         : Node_Ptr;
    begin
-
       if List.Height = 1 then
          if currentNode.Right = null then
             Free_Node (currentNode);
-            List.Height := List.Height - 1;
+            List.Height   := List.Height - 1;
+            List.Top_Left := null;
             return;
          end if;
       end if;
 
-      while currentNode /= null and then not removedLayer loop
-         if currentNode.Below /= null and then currentNode.Below.Right = null
-         then
+      while currentNode.Below /= null loop
+
+         if currentNode.Below.Right = null then
             temp := currentNode.Below;
 
             if currentNode.Below.Below /= null then
@@ -199,6 +199,28 @@ package body SkipListPkg is
             Free_Node (temp);
             List.Height := List.Height - 1;
          end if;
+
+         --  while currentNode /= null loop
+         --     if currentNode.Below /= null
+         --       and then currentNode.Below.Right =
+         --         null
+         --     then
+         --        temp := currentNode.Below;
+
+         --        if currentNode.Below.Below /= null
+         --        then
+         --           currentNode.Below :=
+         --             currentNode.Below.Below;
+         --        else
+         --           currentNode.Below := null;
+         --        end if;
+
+         --        Put_Line ("Removed layer");
+
+         --        removedLayer := True;
+         --        Free_Node (temp);
+         --        List.Height := List.Height - 1;
+         --     end if;
 
          currentNode := currentNode.Below;
       end loop;
@@ -215,49 +237,131 @@ package body SkipListPkg is
    -- current.right = current.right.right
    -- free(temp)
    function Remove (List : in out Skip_List; Item : Integer) return Boolean is
-      currentNode : Node_Ptr;
-      temp        : Node_Ptr;
+      currentNode       : Node_Ptr;
+      currentRow        : Node_Ptr := List.Top_Left;
+      prevRow           : Node_Ptr := null;
+      temp              : Node_Ptr;
+      foundNode         : Boolean  := False;
+      doesNodeHaveBelow : Boolean  := False;
    begin
+      Put_Line ("Remove()");
+
+      Put_Line ("Size: " & List.Size'Image & " Height: " & List.Height'Image);
+
       if (List.Size = 0) then
          return False;
       end if;
 
-      if (Contains (List => List, Item => Item) = False) then
+      -- ensure node exists, probably not required, but just to be extra sure
+      if (not Contains (List, Item)) then
          return False;
       end if;
 
-      currentNode := List.Top_Left;
-      while currentNode /= null loop
-         while currentNode.Right /= null and then currentNode.Right.Data < Item
-         loop
-            currentNode := currentNode.Right;
-         end loop;
+      if (List.Height = 1) then
+         Put_Line ("Height == 1");
+         currentNode := List.Top_Left;
 
-         if currentNode.Right /= null and then currentNode.Right.Data = Item
-         then
+         if (List.Size = 1) then
+            currentRow  := List.Top_Left;
+            currentNode := currentRow.Right;
 
-            temp := currentNode.Right;
-
-            if (currentNode.Right.Right /= null) then
-               currentNode.Right := currentNode.Right.Right;
-            else
-               currentNode.Right := null;
-            end if;
-
-            Free_Node (temp);
-
+            Free_Node (currentNode);
             List.Size := List.Size - 1;
 
-            tryRemoveLayer (List);
+            Free_Node (currentRow);
+            List.Height := List.Height - 1;
 
             return True;
          end if;
 
-         currentNode := currentNode.Below;
+         while currentNode /= null loop
+
+            if currentNode.Right.Data = Item then
+               temp := currentNode.Right;
+
+               if (temp.Right /= null) then
+                  currentNode.Right := temp.Right;
+               else
+                  currentNode.Right := null;
+               end if;
+
+               Free_Node (temp);
+               List.Size := List.Size - 1;
+               exit;
+            end if;
+
+            currentNode := currentNode.Right;
+         end loop;
+      end if;
+
+      -- point to first node
+      currentNode := List.Top_Left;
+
+      -- find where node is
+      -- should find the first occurence from left to right
+      while not foundNode and currentNode /= null loop
+         if (currentNode.Right /= null) then
+            if (currentNode.Right.Data = Item) then
+               -- found node, stop right before it
+               foundNode := True;
+
+               if (currentNode.Right.Below /= null) then
+                  doesNodeHaveBelow := True;
+               end if;
+
+               exit;
+
+            elsif (currentNode.Right.Data < Item) then
+               currentNode := currentNode.Right;
+            else
+               if (currentNode.Below /= null) then
+                  currentNode := currentNode.Below;
+                  -- keep track of which row we are on
+                  prevRow     := currentRow;
+                  currentRow  := currentRow.Below;
+               else
+                  Put_Line ("Can't go down any more");
+                  return False;
+               end if;
+            end if;
+         end if;
       end loop;
 
-      --should never get here
-      return False;
+      -- Since we found the node above, we can do this
+      temp              := currentNode.Right;
+      currentNode.Right := currentNode.Right.Right;
+      Free_Node (temp);
+      List.Size := List.Size - 1;
+
+      -- remove the entire stack of numbers
+      -- loop through each row if neccessary
+      if doesNodeHaveBelow then
+         Put_Line ("node is stack");
+         while currentRow /= null loop
+            Put_Line ("new row");
+
+            currentNode := currentRow;
+
+            while currentNode /= null loop
+               if currentNode.Right.Data = Item then
+                  temp := currentNode.Right;
+
+                  currentNode.Right := currentNode.Right.Right;
+
+                  Free_Node (temp);
+                  List.Size := List.Size - 1;
+
+                  exit; -- so we don't remove any duplicates after
+               end if;
+
+               currentNode := currentNode.Right;
+            end loop;
+
+            currentRow := currentRow.Below;
+         end loop;
+      end if;
+
+      return True;
    end Remove;
 
    -- currentNode = begin
